@@ -1,2 +1,15 @@
+-- |
+
+-- module Main where
+
+import ProcLangSpec as ProcLang
+import LetrecLangSpec as LetrecLang
+import LexAddrLangSpec as LexAddrLang
+
+import Test.Hspec
+
 main :: IO ()
-main = putStrLn "Test suite not yet implemented"
+main = hspec $ do
+  ProcLang.spec
+  LetrecLang.spec
+  LexAddrLang.spec

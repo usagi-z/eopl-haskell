@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.5.
+-- This file has been generated from package.yaml by hpack version 0.35.2.
 --
 -- see: https://github.com/sol/hpack
 
@@ -25,14 +25,54 @@ source-repository head
 
 library
   exposed-modules:
-      Chapter1
+      Ch01
+      Ch01.LcExp
+      Ch01.LcExpStar
+      Ch02
+      Ch02.BinTree
+      Ch02.PolishPrefixNotation
+      Ch03.LetLang
+      Ch03.LetLang.Parsing
+      Ch03.LetLang.Types
+      Ch03.LetLangExtended
+      Ch03.LetLangExtended.Parsing
+      Ch03.LetLangExtended.Types
+      Ch03.LetLangParsing
+      Ch03.LetrecLang
+      Ch03.LetrecLang.Operators
+      Ch03.LetrecLang.Parsing
+      Ch03.LetrecLang.Tests
+      Ch03.LetrecLang.Types
+      Ch03.LexAddrLang
+      Ch03.LexAddrLang.Environment
+      Ch03.LexAddrLang.Operators
+      Ch03.LexAddrLang.Parsing
+      Ch03.LexAddrLang.Tests
+      Ch03.LexAddrLang.Tracing
+      Ch03.LexAddrLang.Types
+      Ch03.ProcLang
+      Ch03.ProcLang.Operators1
+      Ch03.ProcLang.Operators2
+      Ch03.ProcLang.Operators3
+      Ch03.ProcLang.Operators4
+      Ch03.ProcLang.Parsing
+      Ch03.ProcLang.Tests
+      Ch03.ProcLang.Types
+      EnvironmentClasses
+      JSONParsing
       Lib
+      Parsing
+      Parsing2
   other-modules:
       Paths_eopl_haskell
   hs-source-dirs:
       src
   build-depends:
       base >=4.7 && <5
+    , containers
+    , extra
+    , hspec
+    , mtl
   default-language: Haskell2010
 
 executable eopl-haskell-exe
@@ -44,18 +84,29 @@ executable eopl-haskell-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , containers
     , eopl-haskell
+    , extra
+    , hspec
+    , mtl
   default-language: Haskell2010
 
 test-suite eopl-haskell-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      LetrecLangSpec
+      LexAddrLangSpec
+      ProcLangSpec
       Paths_eopl_haskell
   hs-source-dirs:
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , containers
     , eopl-haskell
+    , extra
+    , hspec
+    , mtl
   default-language: Haskell2010

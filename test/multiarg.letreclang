@@ -1,0 +1,2 @@
+letrec double(x,y,z) = if zero?(x) then y else z
+in (double 6 3 5)
