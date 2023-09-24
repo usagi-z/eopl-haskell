@@ -81,7 +81,7 @@ letLangParser = Program <$> exp
 exp :: Parser Token Exp
 exp = diff <|>
       ifExp <|>
-      -- letRecExp <|>
+      letRecExp <|>
       letExp <|>
       procExp <|>
       appExp <|>

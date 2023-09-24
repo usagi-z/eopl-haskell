@@ -9,7 +9,7 @@ import Data.Foldable (find)
 import Data.List (findIndex, elemIndex)
 
 type Env = [Val]
-type SEnv = [Ident]
+type SEnv = [IdentWithBindingInfo]
 
 newtype Program = Program Exp
   deriving (Show)
@@ -19,6 +19,10 @@ type Ident = String
 data IdentWithBindingInfo
   = NonRec Ident
   | Rec Ident
+
+getIdentName :: IdentWithBindingInfo -> Ident
+getIdentName (NonRec idnt) = idnt
+getIdentName (Rec idnt) = idnt
 
 data Exp
   = Const Int
