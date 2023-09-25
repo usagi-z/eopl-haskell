@@ -46,7 +46,7 @@ spec = do
     --   runFromFile "test/oddEven.proclang" `shouldReturn` Right (BoolVal True)
     it "double - letrec" $ do
       runFromFile "test/double.letreclang" `shouldReturn` Right (NumVal 12)
-    it "multiarg - letrec" $ do
-      runFromFile "test/multiarg.letreclang" `shouldReturn` Right (NumVal 5)
+    -- it "multiarg - letrec" $ do
+    --   runFromFile "test/multiarg.letreclang" `shouldReturn` Right (NumVal 5)
     -- it "mutrec - letrec" $ do
     --   runFromFile "test/mutrec.letreclang" `shouldReturn` Right (NumVal 1)

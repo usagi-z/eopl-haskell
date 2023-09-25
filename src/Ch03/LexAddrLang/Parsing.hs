@@ -143,29 +143,29 @@ ifExp = do
   elseExp <- exp
   pure $ If predExp thenExp elseExp
 
--- letExp :: LetLangParser Exp
--- letExp = try $ do
---   key "let"
---   defPairs <- many1 $ do
---     varName <- ident
---     token Equals
---     defExp <- exp
---     pure (varName, defExp)
---   key "in"
---   bodyExp <- exp
---   pure $ Let defPairs bodyExp
-
 letExp :: LetLangParser Exp
 letExp = try $ do
   key "let"
-  -- defPairs <- many1 $ do
-  varName <- ident
-  token Equals
-  defExp <- exp
-  -- pure (varName, defExp)
+  defPairs <- many1 $ do
+    varName <- ident
+    token Equals
+    defExp <- exp
+    pure (varName, defExp)
   key "in"
   bodyExp <- exp
-  pure $ Let varName defExp bodyExp
+  pure $ Let defPairs bodyExp
+
+-- letExp :: LetLangParser Exp
+-- letExp = try $ do
+--   key "let"
+--   -- defPairs <- many1 $ do
+--   varName <- ident
+--   token Equals
+--   defExp <- exp
+--   -- pure (varName, defExp)
+--   key "in"
+--   bodyExp <- exp
+--   pure $ Let varName defExp bodyExp
 
 procExp :: LetLangParser Exp
 procExp = try $ do

@@ -4,7 +4,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE LambdaCase #-}
 
 module Ch03.LexAddrLang where
 
@@ -12,6 +11,7 @@ import Ch03.LexAddrLang.Types
 import Ch03.LexAddrLang.Parsing
 import Ch03.LexAddrLang.Operators
 import Ch03.LexAddrLang.Environment
+import Ch03.LexAddrLang.Tracing
 import Data.Set (Set(..), singleton, (\\))
 import qualified Data.Set as Set
 import Control.Monad.Writer
@@ -41,10 +41,14 @@ translationOf exp senv =
                    in if rec
                       then NLetrecVar i
                       else NVar i
-    (Let var def body) ->
-      NLet (translationOf def senv)
-           (translationOf body
-             (extendSEnv (NonRec var) senv))
+    (Let defs body) ->
+      let f (senv,ts) (idnt, exp) =
+            ( NonRec idnt : senv
+            , ts <> [translationOf exp senv]
+            )
+          defs' = foldl f (senv,[]) defs
+      in NLet (snd defs')
+              (translationOf body (fst defs'))
     (Letrec pName pVar pBody letBody) ->
       NLetrec (translationOf pBody
                (extendSEnv (NonRec pVar) $ extendSEnv (Rec pName) senv))
@@ -60,7 +64,8 @@ applyProcedure (Proc body env) vs =
 
 valueOf :: Exp -> Env -> Writer [String] Val
 valueOf exp env = do
-  -- tell [ showTrace exp ]
+  tell [ showTrace exp ]
+  tell [ show env ]
   case exp of
     Const n -> return $ NumVal n
     Diff m s -> do
@@ -91,9 +96,12 @@ valueOf exp env = do
       let v = applyEnv env i
           (Proc exp env') = fromVal @Proc "letrec-var" v
       pure $ ProcVal $ Proc exp (extendEnv v env')
-    NLet def body -> do
-      vdef <- valueOf def env
-      valueOf body $ extendEnv vdef env
+    NLet defs body -> do
+      let f env defExp = do
+            v <- valueOf defExp env
+            return $ extendEnv v env
+      env' <- foldM f env defs
+      valueOf body env'
     NLetrec procBody letBody ->
       let env' = extendEnv (ProcVal $ Proc procBody env) env
       in valueOf letBody env'
@@ -104,11 +112,16 @@ valueOfProgram :: Program -> Val
 valueOfProgram (Program e) =
   fst $ runWriter $ valueOf (translationOf e initSEnv) initEnv
 
--- traceProgram' :: Program -> [ String ]
--- traceProgram' (Program e) = execWriter $ valueOf e initEnv
+traceProgram' :: Program -> [ String ]
+traceProgram' (Program e) = execWriter $ valueOf (translationOf e initSEnv) initEnv
 
--- trace :: String -> Either String [String]
--- trace = fmap traceProgram' . scanAndParse
+trace :: String -> Either String [String]
+trace = fmap traceProgram' . scanAndParse
+
+translate' (Program e) = translationOf e initSEnv
+
+translate :: String -> Either String Exp
+translate = fmap translate' . scanAndParse
 
 run :: String -> Either String Val
 run = fmap valueOfProgram . scanAndParse

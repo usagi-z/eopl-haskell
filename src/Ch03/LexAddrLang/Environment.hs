@@ -25,6 +25,9 @@ emptySEnv = []
 extendSEnv :: IdentWithBindingInfo -> SEnv -> SEnv
 extendSEnv = (:)
 
+extendSEnvStar :: [ IdentWithBindingInfo ] -> SEnv -> SEnv
+extendSEnvStar = (<>)
+
 applyEnv :: Env -> Int -> Val
 applyEnv env i = case env !? i of
                    Nothing -> error "env index out of bounds"

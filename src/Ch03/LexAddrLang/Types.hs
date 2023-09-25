@@ -28,8 +28,8 @@ data Exp
   = Const Int
   | Var Ident
   | If Exp Exp Exp
-  -- | Let [ (Ident, Exp) ] Exp
-  | Let Ident Exp Exp
+  | Let [ (Ident, Exp) ] Exp
+  -- | Let Ident Exp Exp
   -- | Letrec [ (Ident, [ Ident ], Exp) ] Exp
   | Letrec Ident Ident Exp Exp
   | ProcExp [ Ident ] Exp
@@ -38,7 +38,7 @@ data Exp
   | Op Ident [ Exp ]
   | NVar Int
   | NLetrecVar Int
-  | NLet Exp Exp
+  | NLet [ Exp ] Exp
   | NLetrec Exp Exp
   | NProc Exp
   deriving (Show, Eq)
