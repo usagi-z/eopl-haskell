@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.2.
+-- This file has been generated from package.yaml by hpack version 0.35.1.
 --
 -- see: https://github.com/sol/hpack
 
@@ -58,6 +58,10 @@ library
       Ch03.ProcLang.Parsing
       Ch03.ProcLang.Tests
       Ch03.ProcLang.Types
+      Ch04.ExplicitRefsLang
+      Ch04.ExplicitRefsLang.Operators
+      Ch04.ExplicitRefsLang.Parsing
+      Ch04.ExplicitRefsLang.Types
       EnvironmentClasses
       JSONParsing
       Lib
