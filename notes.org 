@@ -1,0 +1,6 @@
+
+* GADT experiment
+** TODO try making the a in =Val a= existential
+** TODO back up to compilable state and put the experiment on a separate branch
+* using RWS
+** TODO run the tests
