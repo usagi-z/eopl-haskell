@@ -22,7 +22,9 @@ import Data.Proxy (Proxy(..))
 import Data.Set (Set(..), singleton, (\\))
 import Control.Monad.Writer
 import Control.Monad (foldM)
+import Control.Monad.RWS.Strict
 import qualified Data.Set as Set
+import Control.Monad.Identity (Identity)
 
 initEnv :: Env
 initEnv = extendEnvStar
@@ -31,22 +33,26 @@ initEnv = extendEnvStar
             emptyEnv
 
 -- procedures
-type Eval = Writer [String] Val
+type Store = [Val]
+-- type Eval = Writer [String] Val
+type Eval = RWS Env [String] Store Val
 
 applyProcedure :: Proc -> [ Val ] -> Eval
 applyProcedure (Proc is body env) vs =
-  valueOf body $ extendEnvStar is vs env
+  local (const $ extendEnvStar is vs env) $ valueOf body
 
 -- evaluation
-valueOf :: Exp -> Env -> Writer [String] Val
-valueOf exp env = do
+valueOf :: Exp -> Eval
+valueOf exp = do
   tell [ showTrace exp ]
   case exp of
     Const n -> return $ NumVal n
-    Var ident -> return $ applyEnv env ident
+    Var ident -> do
+      env <- ask
+      return $ applyEnv env ident
     Diff m s -> do
-      m' <- valueOf m env
-      s' <- valueOf s env
+      m' <- valueOf m
+      s' <- valueOf s
       case (m', s') of
         (NumVal m', NumVal s') -> return $ NumVal $ m' - s'
         (m',s') -> error $ "Diff type error: minuend - " <> show m' <>
@@ -54,40 +60,44 @@ valueOf exp env = do
     Op name xs ->
       case lookup name operators of
         Nothing -> error $ "operator " <> name <> " not defined"
-        Just f -> do args <- mapM (`valueOf` env) xs
+        Just f -> do args <- mapM valueOf xs
                      return $ f args
     If c t e -> do
-      val <- valueOf c env
+      val <- valueOf c
       let cb = fromVal @Bool "If condition: " val
-      if cb then valueOf t env else valueOf e env
+      if cb then valueOf t else valueOf e
 
     -- let* in the book
     Let defs b -> do
       let f env (ident, defExp) = do
-            v <- valueOf defExp env
+            v <- local (const env) $ valueOf defExp
             return $ extendEnv ident v env
+      env <- ask
       env' <- foldM f env defs
-      valueOf b env'
+      local (const env') $ valueOf b
     Letrec defs letBody ->
-      valueOf letBody $ ExtendEnvRec defs env
-    ProcExp vars body ->
+      local (ExtendEnvRec defs) $ valueOf letBody
+    ProcExp vars body -> do
+      env <- ask
       return $ ProcVal $ Proc vars body env
     App rator rands -> do
-      rator' <- valueOf rator env
+      rator' <- valueOf rator
       case rator' of
         ProcVal p -> do
-          rands' <- mapM (`valueOf` env) rands
+          rands' <- mapM valueOf rands
           applyProcedure p rands'
         _ -> error "App: rator is not a procedure"
 
 valueOfProgram :: Program -> Val
-valueOfProgram (Program e) = fst $ runWriter $ valueOf e initEnv
+valueOfProgram (Program e) =
+  let (val,_store, _trace) = runRWS (valueOf e) initEnv []
+  in val
 
-traceProgram' :: Program -> [ String ]
-traceProgram' (Program e) = execWriter $ valueOf e initEnv
+-- traceProgram' :: Program -> [ String ]
+-- traceProgram' (Program e) = execWriter $ valueOf e initEnv
 
-trace :: String -> Either String [String]
-trace = fmap traceProgram' . scanAndParse
+-- trace :: String -> Either String [String]
+-- trace = fmap traceProgram' . scanAndParse
 
 run :: String -> Either String Val
 run = fmap valueOfProgram . scanAndParse

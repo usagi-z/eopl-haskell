@@ -8,13 +8,13 @@ import Data.Kind (Type)
 import Data.Foldable (find)
 -- Env
 
-data Env a where
-  EmptyEnv :: Env a
-  ExtendEnv :: Ident -> (Val a) -> Env a -> Env a
-  ExtendEnvRec :: [ ( Ident, [ Ident ], Exp ) ] -> Env a -> Env a
-  -- deriving (Show)
+data Env
+  = EmptyEnv
+  | ExtendEnv Ident Val Env
+  | ExtendEnvRec [ ( Ident, [ Ident ], Exp ) ] Env
+  deriving (Show, Eq)
 
-emptyEnv :: Env a
+emptyEnv :: Env
 emptyEnv = EmptyEnv
 
 fstOfTriple (x,_,_) = x
@@ -22,7 +22,7 @@ findProc :: Ident -> [ ( Ident, [ Ident ], Exp ) ] -> Maybe ( Ident, [ Ident ], 
 findProc name = find matches
   where matches = (== name) . fstOfTriple
 
-applyEnv :: Env a -> Ident -> Val a
+applyEnv :: Env -> Ident -> Val
 applyEnv EmptyEnv _ = error "empty env"
 applyEnv (ExtendEnv var' val env) var
   | var == var' = val
@@ -36,7 +36,7 @@ extendEnv = ExtendEnv
 
 extendEnvRec = ExtendEnvRec
 
-extendEnvStar :: [Ident] -> [Val a] -> Env a -> Env a
+extendEnvStar :: [Ident] -> [Val] -> Env -> Env
 extendEnvStar ids vals env = foldr (uncurry extendEnv) env $ zip ids vals
 
 newtype Program = Program Exp
@@ -54,6 +54,9 @@ data Exp
   | App Exp [ Exp ]
   | Diff Exp Exp
   | Op Ident [ Exp ]
+  | NewrefExp Exp
+  | DerefExp Exp
+  | SetrefExp Exp Exp
   deriving (Show, Eq)
 
 showTrace :: Exp -> String
@@ -70,20 +73,66 @@ showTrace (Diff _ _) = "diff"
 showTrace (Op name _) = "op " <> name
 showTrace (Var name) = "var " <> name
 
-data Proc a = Proc [ Ident ] Exp (Env a)
-  -- deriving (Show, Eq)
+data Proc = Proc [ Ident ] Exp Env
+  deriving (Show, Eq)
 
-data Val a where
-  NumVal :: Int -> Val Int
-  BoolVal :: Bool -> Val Bool
-  ProcVal :: Proc a -> Val (Proc a)
-  ListVal :: [Val a] -> Val [Val a]
+data Val
+  = NumVal Int
+  | BoolVal Bool
+  | ProcVal Proc
+  | ListVal [Val]
+  deriving (Show,Eq)
 
-  -- deriving (Show)
+class FromVal a where
+  fromVal :: String -> Val -> a
 
+instance FromVal Bool where
+  fromVal msg val =
+    case val of
+      BoolVal b -> b
+      o -> error $ msg <> ": " <> show o
 
-fromVal :: Val a -> a
-fromVal (NumVal i) = i
-fromVal (BoolVal b) = b
-fromVal (ProcVal p) = p
-fromVal (ListVal vals) = vals
+instance FromVal Int where
+  fromVal msg val =
+    case val of
+      NumVal i -> i
+      o -> error $ msg <> ": " <> show o
+
+instance FromVal [Val] where
+  fromVal msg val =
+    case val of
+      ListVal xs -> xs
+      o -> error $ msg <> ": " <> show o
+
+instance FromVal Proc where
+  fromVal msg val =
+    case val of
+      ProcVal p -> p
+      o -> error $ msg <> ": " <> show o
+
+instance FromVal Val where
+  fromVal _ = id
+
+class ToVal a where
+  toVal :: a -> Val
+
+instance ToVal Bool where
+  toVal = BoolVal
+
+instance ToVal Int where
+  toVal = NumVal
+
+instance ToVal [Val] where
+  toVal = ListVal
+
+instance ToVal Proc where
+  toVal = ProcVal
+
+instance ToVal Val where
+  toVal = id
+
+-- data ValT a where
+--   NumValT :: Int -> ValT Int
+--   BoolValT :: Bool -> ValT Bool
+--   ProcValT :: Proc -> ValT Proc
+--   ListValT :: [Val] -> ValT [Val]

@@ -180,3 +180,25 @@ letRecExp = try $ do
   key "in"
   letBody <- exp
   pure $ Letrec defs letBody
+
+newrefExp :: LetLangParser Exp
+newrefExp = try $ do
+  key "newref"
+  val <- parenthesized exp
+  pure $ NewrefExp val
+
+derefExp :: LetLangParser Exp
+derefExp = try $ do
+  key "deref"
+  val <- parenthesized exp
+  pure $ DerefExp val
+
+setrefExp :: LetLangParser Exp
+setrefExp = try $ do
+  key "setref"
+  (refexp, valexp) <- parenthesized $ do
+    refexp <- exp
+    token Comma
+    valexp <- exp
+    pure (refexp, valexp)
+  pure $ SetrefExp refexp valexp
