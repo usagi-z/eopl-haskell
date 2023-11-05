@@ -49,3 +49,9 @@ spec = do
       runFromFile "test/multiarg.letreclang" `shouldReturn` Right (NumVal 5)
     it "mutrec - letrec" $ do
       runFromFile "test/mutrec.letreclang" `shouldReturn` Right (NumVal 1)
+    it "refs - counter1" $ do
+      runFromFile "test/counter1.erefslang" `shouldReturn` Right (NumVal (-1))
+    it "refs - counter2" $ do
+      runFromFile "test/counter2.erefslang" `shouldReturn` Right (NumVal 0)
+    it "refs - oddeven" $ do
+      runFromFile "test/oddeven.erefslang" `shouldReturn` Right (NumVal 1)

@@ -1,9 +1,9 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase        #-}
 
-module Ch04.ExplicitRefsLang.Parsing where
+module Ch04.ImplicitRefsLang.Parsing where
 
-import           Ch04.ExplicitRefsLang.Types
+import           Ch04.ImplicitRefsLang.Types
 import           Control.Applicative         (Alternative ((<|>)))
 import           Data.Functor                (($>), (<&>))
 import           Data.Maybe                  (isJust)
@@ -46,9 +46,7 @@ keywords =
     "end",
     "proc",
     "letrec",
-    "deref",
-    "newref",
-    "setref",
+    "set",
     "begin",
     "end"
   ]
@@ -97,9 +95,7 @@ exp :: Parser Token Exp
 exp =
   diff
     <|> constExp
-    <|> newrefExp
-    <|> derefExp
-    <|> setrefExp
+    <|> setExp
     <|> beginExp
     <|> ifExp
     <|> letRecExp
@@ -192,9 +188,9 @@ letExp = try $ do
 procExp :: LetLangParser Exp
 procExp = try $ do
   key "proc"
-  vars <- parenthesized $ sepBy1 (token Comma) ident
+  var <- many1 ident
   body <- exp
-  pure $ ProcExp vars body
+  pure $ ProcExp var body
 
 appExp :: LetLangParser Exp
 appExp = try $
@@ -217,27 +213,13 @@ letRecExp = try $ do
   letBody <- exp
   pure $ Letrec defs letBody
 
-newrefExp :: LetLangParser Exp
-newrefExp = try $ do
-  key "newref"
-  val <- parenthesized exp
-  pure $ NewrefExp val
-
-derefExp :: LetLangParser Exp
-derefExp = try $ do
-  key "deref"
-  val <- parenthesized exp
-  pure $ DerefExp val
-
-setrefExp :: LetLangParser Exp
-setrefExp = try $ do
-  key "setref"
-  (refexp, valexp) <- parenthesized $ do
-    refexp <- exp
-    token Comma
-    valexp <- exp
-    pure (refexp, valexp)
-  pure $ SetrefExp refexp valexp
+setExp :: LetLangParser Exp
+setExp = try $ do
+  key "set"
+  varName <- ident
+  token Equals
+  valExp <- exp
+  pure $ SetExp varName valExp
 
 beginExp :: LetLangParser Exp
 beginExp = try $ do

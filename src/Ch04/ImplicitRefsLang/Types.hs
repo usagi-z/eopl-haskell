@@ -2,16 +2,16 @@
 {-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GADTs #-}
-module Ch04.ExplicitRefsLang.Types where
+module Ch04.ImplicitRefsLang.Types where
 
 import Data.Kind (Type)
 import Data.Foldable (find)
 import qualified Data.Sequence as S
--- Env
 
+----- ENVIRONMENT
 data Env
   = EmptyEnv
-  | ExtendEnv Ident Val Env
+  | ExtendEnv Ident Int Env
   | ExtendEnvRec [ ( Ident, [ Ident ], Exp ) ] Env
   deriving (Show, Eq)
 
@@ -23,35 +23,25 @@ findProc :: Ident -> [ ( Ident, [ Ident ], Exp ) ] -> Maybe ( Ident, [ Ident ], 
 findProc name = find matches
   where matches = (== name) . fstOfTriple
 
-applyEnv :: Env -> Ident -> Val
-applyEnv EmptyEnv _ = error "empty env"
-applyEnv (ExtendEnv var' val env) var
-  | var == var' = val
-  | otherwise = applyEnv env var
-applyEnv env@(ExtendEnvRec defs env') var =
-  case findProc var defs of
-    Nothing -> applyEnv env' var
-    Just (name, args, body) -> ProcVal $ Proc args body env
-
 extendEnv = ExtendEnv
 
-extendEnvRec = ExtendEnvRec
+-- extendEnvRec = ExtendEnvRec
 
-extendEnvStar :: [Ident] -> [Val] -> Env -> Env
+extendEnvStar :: [Ident] -> [Int] -> Env -> Env
 extendEnvStar ids vals env = foldr (uncurry extendEnv) env $ zip ids vals
 
-type Store = S.Seq Val
 
-newtype Ref = Ref Int
-  deriving (Show, Eq)
+----- STORE
+
+type Store = S.Seq Val
 
 emptyStore :: Store
 emptyStore = mempty
 
-
 deref :: Int -> Store -> Maybe Val
 deref = S.lookup
 
+----- CORE TYPES
 newtype Program = Program Exp
   deriving (Show)
 
@@ -64,28 +54,12 @@ data Exp
   | Let [ (Ident, Exp) ] Exp
   | Letrec [ (Ident, [ Ident ], Exp) ] Exp
   | ProcExp [ Ident ] Exp
-  | App Exp [ Exp ]
+  | App Exp Exp
   | Diff Exp Exp
   | Op Ident [ Exp ]
-  | NewrefExp Exp
-  | DerefExp Exp
-  | SetrefExp Exp Exp
+  | SetExp Ident Exp
   | BeginExp [Exp]
   deriving (Show, Eq)
-
-showTrace :: Exp -> String
-showTrace c@(Const _) = show c
-showTrace (If {}) = "if"
-showTrace (Let defs _) = let ds = unwords $ fmap fst defs
-                         in "let " <> ds
-showTrace (Letrec defs _) = let ds = unwords $ fmap (\(x,_,_) -> x) defs
-                            in "letrec " <> ds
-showTrace (ProcExp vars _) = "proc " <> unwords vars <> " = ..."
-showTrace (App (Var name) _) = "app " <> name
-showTrace (App _ _) = "app anon"
-showTrace (Diff _ _) = "diff"
-showTrace (Op name _) = "op " <> name
-showTrace (Var name) = "var " <> name
 
 data Proc = Proc [ Ident ] Exp Env
   deriving (Show, Eq)
@@ -94,10 +68,9 @@ data Val
   = NumVal Int
   | BoolVal Bool
   | ProcVal Proc
-  | ListVal [Val]
-  | RefVal Ref
   deriving (Show,Eq)
 
+----- CONVERSIONS
 class FromVal a where
   fromVal :: String -> Val -> a
 
@@ -113,22 +86,10 @@ instance FromVal Int where
       NumVal i -> i
       o -> error $ msg <> ": " <> show o
 
-instance FromVal [Val] where
-  fromVal msg val =
-    case val of
-      ListVal xs -> xs
-      o -> error $ msg <> ": " <> show o
-
 instance FromVal Proc where
   fromVal msg val =
     case val of
       ProcVal p -> p
-      o -> error $ msg <> ": " <> show o
-
-instance FromVal Ref where
-  fromVal msg val =
-    case val of
-      RefVal ref -> ref
       o -> error $ msg <> ": " <> show o
 
 instance FromVal Val where
@@ -143,20 +104,23 @@ instance ToVal Bool where
 instance ToVal Int where
   toVal = NumVal
 
-instance ToVal [Val] where
-  toVal = ListVal
-
 instance ToVal Proc where
   toVal = ProcVal
-
-instance ToVal Ref where
-  toVal = RefVal
 
 instance ToVal Val where
   toVal = id
 
--- data ValT a where
---   NumValT :: Int -> ValT Int
---   BoolValT :: Bool -> ValT Bool
---   ProcValT :: Proc -> ValT Proc
---   ListValT :: [Val] -> ValT [Val]
+-- ----- TRACING
+-- showTrace :: Exp -> String
+-- showTrace c@(Const _) = show c
+-- showTrace (If {}) = "if"
+-- showTrace (Let defs _) = let ds = unwords $ fmap fst defs
+--                          in "let " <> ds
+-- showTrace (Letrec defs _) = let ds = unwords $ fmap (\(x,_,_) -> x) defs
+--                             in "letrec " <> ds
+-- showTrace (ProcExp vars _) = "proc " <> unwords vars <> " = ..."
+-- showTrace (App (Var name) _) = "app " <> name
+-- showTrace (App _ _) = "app anon"
+-- showTrace (Diff _ _) = "diff"
+-- showTrace (Op name _) = "op " <> name
+-- showTrace (Var name) = "var " <> name

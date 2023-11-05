@@ -1,17 +1,8 @@
+module Ch04.ImplicitRefsLang where
 
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeFamilyDependencies #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE LambdaCase #-}
-
-module Ch04.ExplicitRefsLang where
-
-import Ch04.ExplicitRefsLang.Parsing
-import Ch04.ExplicitRefsLang.Types
-import Ch04.ExplicitRefsLang.Operators
+import Ch04.ImplicitRefsLang.Parsing
+import Ch04.ImplicitRefsLang.Types
+import Ch04.ImplicitRefsLang.Operators
 import Data.Function (on)
 import Data.List (find)
 import Data.Foldable (foldrM, foldlM, forM_)
@@ -28,30 +19,45 @@ import Control.Monad.Identity (Identity)
 import Data.List.Extra ((!?))
 import Data.Sequence (Seq(..), update, (|>))
 import qualified Data.Sequence as S
+import Data.Traversable (for)
 
-initEnv :: Env
-initEnv = extendEnvStar
-            ["i", "v", "x"]
-            (fmap NumVal [1,5,10])
-            emptyEnv
 
--- procedures
--- type Eval = Writer [String] Val
-type Eval = RWS Env [String] Store Val
+type Eval a = RWS Env [String] Store a
 
-applyProcedure :: Proc -> [ Val ] -> Eval
-applyProcedure (Proc is body env) vs =
-  local (const $ extendEnvStar is vs env) $ valueOf body
+applyEnv :: Env -> Ident -> Eval Int
+applyEnv EmptyEnv _ = error "empty env"
+applyEnv (ExtendEnv var' val env) var
+  | var == var' = return val
+  | otherwise = applyEnv env var
+applyEnv env@(ExtendEnvRec defs env') var =
+  case findProc var defs of
+    Nothing -> applyEnv env' var
+    Just (name, args, body) -> do
+      newref $ ProcVal $ Proc args body env
 
--- evaluation
-valueOf :: Exp -> Eval
+newref :: Val -> Eval Int
+newref v = do
+  modify (|> v)
+  store <- get
+  let newref = S.length store - 1
+  return newref
+
+applyProcedure :: Proc -> [ Val ] -> Eval Val
+applyProcedure (Proc is body env) vs = do
+  newrefs <- for vs newref
+  local (const $ extendEnvStar is newrefs env) $ valueOf body
+
+valueOf :: Exp -> Eval Val
 valueOf exp = do
-  tell [ showTrace exp ]
   case exp of
     Const n -> return $ NumVal n
     Var ident -> do
       env <- ask
-      return $ applyEnv env ident
+      store <- get
+      ref <- applyEnv env ident
+      return $ case deref ref store of
+                 Nothing -> error $ "var " <> ident <> " is a dangling reference"
+                 Just val -> val
     Diff m s -> do
       m' <- valueOf m
       s' <- valueOf s
@@ -68,12 +74,11 @@ valueOf exp = do
       val <- valueOf c
       let cb = fromVal @Bool "If condition: " val
       if cb then valueOf t else valueOf e
-
-    -- let* in the book
     Let defs b -> do
       let f env (ident, defExp) = do
             v <- local (const env) $ valueOf defExp
-            return $ extendEnv ident v env
+            ref <- newref v
+            return $ extendEnv ident ref env
       env <- ask
       env' <- foldM f env defs
       local (const env') $ valueOf b
@@ -89,26 +94,12 @@ valueOf exp = do
           rands' <- mapM valueOf rands
           applyProcedure p rands'
         _ -> error "App: rator is not a procedure"
-    NewrefExp exp -> do
+    SetExp ident exp -> do
       val <- valueOf exp
-      modify (|> val)
-      store <- get
-      return $ RefVal $ Ref (S.length store - 1)
-    DerefExp exp -> do
-      val <- valueOf exp
-      let ref = fromVal @Ref "deref" val
-          Ref i = ref
-      store <- get
-      let valMb = deref i store
-      case valMb of
-        Nothing -> error $ "invalid store reference " <> show i
-        Just val -> return val
-    SetrefExp refExp valExp -> do
-      ref <- valueOf refExp
-      let Ref i = fromVal @Ref "setref" ref
-      val <- valueOf valExp
-      modify $ S.update i val
-      return (NumVal 23)
+      env <- ask
+      ref <- applyEnv env ident
+      modify $ S.update ref val
+      return $ NumVal 888
     BeginExp exps -> do
       let evalSeq [] = error "no statements in begin"
           evalSeq [x] = valueOf x
@@ -116,18 +107,3 @@ valueOf exp = do
             _ <- valueOf x
             evalSeq xs
       evalSeq exps
-
-
-valueOfProgram :: Program -> Val
-valueOfProgram (Program e) =
-  let (val,_store, _trace) = runRWS (valueOf e) initEnv emptyStore
-  in val
-
--- traceProgram' :: Program -> [ String ]
--- traceProgram' (Program e) = execWriter $ valueOf e initEnv
-
--- trace :: String -> Either String [String]
--- trace = fmap traceProgram' . scanAndParse
-
-run :: String -> Either String Val
-run = fmap valueOfProgram . scanAndParse

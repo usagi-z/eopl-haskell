@@ -1,0 +1,9 @@
+let g = let count = 0
+in proc (dummy)
+begin
+set count = -(count,-1);
+count
+end
+in let a = (g 11)
+in let b = (g 11)
+in -(a,b)
